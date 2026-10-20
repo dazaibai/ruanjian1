@@ -1,0 +1,40 @@
+# Go
+backend/studyroom-server
+backend/bin/
+*.exe
+*.test
+*.out
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.npm-cache/
+
+# 环境与日志
+.env
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# 本地临时
+tmp/
+.gocache/
+**/.gocache/
+.qa-docx/
+**/.qa-docx/
+
+# 文档备份与本地转换脚本（不入库）
+docs/_backup_docx/
+tools/
+
+# Agent 协同与临时目录
+.agents/
+
+# Word 临时锁文件
+~$*

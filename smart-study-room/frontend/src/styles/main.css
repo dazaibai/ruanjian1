@@ -1,0 +1,13 @@
+/* ============================================================
+   全局样式入口
+   tokens  → 设计令牌（色彩 / 字号 / 间距 / 阴影 / 动效）
+   base    → reset 与元素默认值
+   components → 全站骨架与通用组件类
+   ============================================================ */
+
+@import './tokens.css';
+@import './base.css';
+@import './components.css';
+
+@import './workspace.css';
+@import './motion.css';
