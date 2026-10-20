@@ -40,12 +40,13 @@ function refreshUnread() {
 // 菜单：首页 / 报名 / 我的报名 / 候补报名 / 统计 / 消息 / 个人中心 / 管理端
 const menus = computed(() => {
   const common = [
-    { index: '/', title: '首页', icon: 'home' }
+    { index: '/', title: auth.isAdmin ? '运营首页' : '活动大厅', icon: 'home' }
   ]
   const roleMenus = auth.isAdmin
     ? [
         { index: '/analytics', title: '热力图统计', icon: 'analytics' },
-        { index: '/admin', title: '管理端', icon: 'admin' }
+        { index: '/admin', title: '管理端', icon: 'admin' },
+        { index: '/checkin-demo', title: '核销演示', icon: 'ticket' }
       ]
     : [
         { index: '/booking', title: '活动报名', icon: 'booking' },

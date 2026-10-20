@@ -14,6 +14,7 @@ import SInputNumber from '../../components/ui/SInputNumber.vue'
 import SDialog from '../../components/ui/SDialog.vue'
 import STag from '../../components/ui/STag.vue'
 import SEmpty from '../../components/ui/SEmpty.vue'
+import { eventCapacity, eventPresentation, sampleEvents } from '../../utils/eventCatalog'
 
 const activeTab = ref('rooms')
 
@@ -31,6 +32,37 @@ const closeTimeOptions = buildTimeOptions(12, 23)
 
 // ---------- 活动场地管理 ----------
 const rooms = ref([])
+const selectedEventId = ref('')
+const dashboardUpdated = ref(new Date())
+const attendeeQuery = ref('')
+const attendeeFilter = ref('全部')
+const dashboardRooms = computed(() => rooms.value.length ? rooms.value : sampleEvents)
+const selectedEvent = computed(() => dashboardRooms.value.find((room) => String(room.id) === selectedEventId.value) || dashboardRooms.value[0])
+const selectedTheme = computed(() => eventPresentation(selectedEvent.value))
+const displayCapacity = computed(() => eventCapacity(selectedEvent.value) || 80)
+const demoMetrics = computed(() => {
+  const total = displayCapacity.value
+  const registered = Math.min(total, Math.round(total * .78))
+  const arrived = Math.round(registered * .72)
+  return { registered, arrived, waitlist: Math.round(total * .08), absent: registered - arrived, rate: Math.round(arrived / Math.max(1, registered) * 100) }
+})
+const attendees = computed(() => [
+  { name: '陈同学', no: 'A-08', status: '已到场', time: '14:02' },
+  { name: '林同学', no: 'A-09', status: '待核销', time: '—' },
+  { name: '周同学', no: 'B-12', status: '已到场', time: '14:11' },
+  { name: '许同学', no: 'B-15', status: '待核销', time: '—' }
+].filter((person) => (attendeeFilter.value === '全部' || attendeeFilter.value === person.status) && `${person.name} ${person.no}`.includes(attendeeQuery.value.trim())))
+
+function refreshDashboard() { dashboardUpdated.value = new Date() }
+function exportAttendees() {
+  const rows = [['姓名', '座位', '状态', '到场时间'], ...attendees.value.map((person) => [person.name, person.no, person.status, person.time])]
+  const url = URL.createObjectURL(new Blob(['\uFEFF' + rows.map((row) => row.join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.download = '活动名单演示.csv'
+  link.click()
+  URL.revokeObjectURL(url)
+}
 const roomDialog = ref(false)
 const editingId = ref(null)
 const roomForm = ref({
@@ -39,8 +71,11 @@ const roomForm = ref({
 })
 
 async function loadRooms() {
-  const resp = await getRooms()
-  rooms.value = resp.data || []
+  try {
+    const resp = await getRooms()
+    rooms.value = resp.data || []
+  } catch { rooms.value = [] }
+  if (!dashboardRooms.value.some((room) => String(room.id) === selectedEventId.value)) selectedEventId.value = String(dashboardRooms.value[0]?.id || '')
 }
 
 function openCreate() {
@@ -153,7 +188,8 @@ const roomStats = computed(() => ({
   seats: rooms.value.reduce((s, r) => s + (r.seat_rows * r.seat_cols || 0), 0)
 }))
 onMounted(async () => {
-  await loadRooms(); await loadUsers()
+  await loadRooms()
+  try { await loadUsers() } catch { users.value = [] }
   refreshStats()
 })
 
@@ -179,6 +215,12 @@ function creditColor(s) {
           <li>维护中座位学生端不可报名，不计入统计</li>
           <li>管理员账号<b>无法禁用</b>，防止误操作锁死</li>
         </ul></PageHelp></header>
+    <section class="command-dashboard" :style="{ '--event-accent': selectedTheme.color }" aria-label="活动运营演示看板">
+      <div class="command-head"><div><span class="command-kicker">ACTIVITY CONTROL / 运营看板</span><h2>{{ selectedEvent?.name || '校园活动' }}</h2><p>{{ selectedEvent?.location }} · {{ selectedTheme.category }} · 展示指标</p></div><div class="command-actions"><label>当前活动<select v-model="selectedEventId"><option v-for="room in dashboardRooms" :key="room.id" :value="String(room.id)">{{ room.name }}</option></select></label><button @click="refreshDashboard"><AppIcon name="refresh" :size="16" />刷新</button></div></div>
+      <div class="command-metrics"><div><span>实时报名</span><strong>{{ demoMetrics.registered }}</strong><small>演示数据</small></div><div><span>已到场</span><strong>{{ demoMetrics.arrived }}</strong><small>演示数据</small></div><div><span>到场率</span><strong>{{ demoMetrics.rate }}%</strong><small>演示数据</small></div><div><span>候补人数</span><strong>{{ demoMetrics.waitlist }}</strong><small>演示数据</small></div><div><span>未到人数</span><strong>{{ demoMetrics.absent }}</strong><small>演示数据</small></div></div>
+      <div class="command-lower"><div class="arrival-ring" :style="{ '--rate': `${demoMetrics.rate}%` }"><div><strong>{{ demoMetrics.rate }}%</strong><span>到场率</span></div></div><div class="command-bars"><div><span>普通观众</span><div><i style="width:72%; background:#2563eb" /></div><b>72%</b></div><div><span>嘉宾</span><div><i style="width:86%; background:#8b5cf6" /></div><b>86%</b></div><div><span>工作人员</span><div><i style="width:94%; background:#06b6d4" /></div><b>94%</b></div><div><span>媒体</span><div><i style="width:58%; background:#f59e0b" /></div><b>58%</b></div><div><span>无障碍</span><div><i style="width:50%; background:#22c55e" /></div><b>50%</b></div></div><div class="command-note"><span class="host-mark">{{ selectedTheme.symbol }}</span><strong>{{ selectedTheme.host }}</strong><p>分区到场率为界面示意。活动、座位和用户管理仍使用现有服务数据。</p><small>最后刷新：{{ dashboardUpdated.toLocaleTimeString('zh-CN', { hour12: false }) }}</small></div></div>
+    </section>
+    <section class="attendee-preview"><div class="attendee-top"><div><h2>现场名单</h2><p>演示名单 · 未到人员优先显示</p></div><div><input v-model="attendeeQuery" type="search" aria-label="搜索名单" placeholder="搜索姓名或座位" /><select v-model="attendeeFilter" aria-label="筛选到场状态"><option>全部</option><option>已到场</option><option>待核销</option></select><button @click="exportAttendees"><AppIcon name="reservations" :size="16" />导出</button></div></div><div class="attendee-list"><div v-for="person in attendees" :key="person.no"><span>{{ person.name }}</span><span>{{ person.no }}</span><span :class="person.status === '已到场' ? 'arrived' : 'pending'">{{ person.status }}</span><time>{{ person.time }}</time></div><p v-if="!attendees.length">没有符合筛选条件的人员</p></div></section>
     <div class="split admin-split">
     <!-- 左栏：导航 + 统计 + 快速操作 -->
     <div class="split-left">

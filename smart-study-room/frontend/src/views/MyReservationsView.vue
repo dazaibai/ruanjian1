@@ -3,7 +3,7 @@ import PageHelp from '../components/PageHelp.vue'
 import SAnimatedNumber from '../components/ui/SAnimatedNumber.vue'
 import { usePagination } from '../composables/usePagination'
 import SPagination from '../components/ui/SPagination.vue'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { message, confirmDialog } from '../components/ui/feedback'
 import {
   listMyReservations, cancelReservation, checkinReservation,
@@ -13,10 +13,42 @@ import AppIcon from '../components/AppIcon.vue'
 import SButton from '../components/ui/SButton.vue'
 import STag from '../components/ui/STag.vue'
 import SEmpty from '../components/ui/SEmpty.vue'
+import SDialog from '../components/ui/SDialog.vue'
+import { eventPresentation } from '../utils/eventCatalog'
 
 const list = ref([])
 const loading = ref(false)
 const filterStatus = ref('all')
+const ticket = ref(null)
+const now = ref(Date.now())
+let clockTimer
+const ticketStart = computed(() => ticket.value ? new Date(`${ticket.value.res_date}T${ticket.value.start_time}`).getTime() : 0)
+const minutesUntil = computed(() => Math.max(0, Math.ceil((ticketStart.value - now.value) / 60000)))
+const ticketPattern = computed(() => {
+  const seed = Number(ticket.value?.id || 1)
+  return Array.from({ length: 21 * 21 }, (_, index) => {
+    const x = index % 21, y = Math.floor(index / 21)
+    for (const [left, top] of [[0, 0], [14, 0], [0, 14]]) {
+      if (x >= left && x < left + 7 && y >= top && y < top + 7) {
+        const a = x - left, b = y - top
+        return a === 0 || a === 6 || b === 0 || b === 6 || (a >= 2 && a <= 4 && b >= 2 && b <= 4)
+      }
+    }
+    return (Math.imul(index + seed, 2654435761) >>> 25) % 3 !== 0
+  })
+})
+
+function addToCalendar(row) {
+  const start = `${row.res_date.replaceAll('-', '')}T${row.start_time.slice(0, 5).replace(':', '')}00`
+  const end = `${row.res_date.replaceAll('-', '')}T${row.end_time.slice(0, 5).replace(':', '')}00`
+  const event = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Campus Events//CN\r\nBEGIN:VEVENT\r\nUID:campus-${row.id}@local\r\nDTSTART:${start}\r\nDTEND:${end}\r\nSUMMARY:${row.room_name}\r\nDESCRIPTION:座位 ${row.seat_no}，请按时签到\r\nEND:VEVENT\r\nEND:VCALENDAR`
+  const url = URL.createObjectURL(new Blob([event], { type: 'text/calendar;charset=utf-8' }))
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = `活动-${row.res_date}.ics`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
 
 const statusMeta = {
   pending:     { text: '待签到',   type: 'warning' },
@@ -110,7 +142,8 @@ const statusNav = [
   { key: 'violation',  label: '已违约', icon: 'warning' }
 ]
 
-onMounted(load)
+onMounted(() => { load(); clockTimer = setInterval(() => { now.value = Date.now() }, 60000) })
+onUnmounted(() => clearInterval(clockTimer))
 const { page, pages, pageItems } = usePagination(filtered, filterStatus)
 </script>
 
@@ -136,7 +169,7 @@ const { page, pages, pageItems } = usePagination(filtered, filterStatus)
         </div>
         <div class="kpi-grid kpi-lg">
           <div class="kpi"><div class="kpi-num"><SAnimatedNumber :value="statusBuckets.all" /></div><div class="kpi-label">累计报名</div></div>
-          <div class="kpi kpi-warn"><div class="kpi-num"><SAnimatedNumber :value="statusBuckets.pending" /></div><div class="kpi-label">今日待签到</div></div>
+          <div class="kpi kpi-warn"><div class="kpi-num"><SAnimatedNumber :value="statusBuckets.pending" /></div><div class="kpi-label">待签到</div></div>
           <div class="kpi kpi-ok"><div class="kpi-num">{{ statusBuckets.checked_in + statusBuckets.temp_leave }}</div><div class="kpi-label">当前进行中</div></div>
           <div class="kpi kpi-bad"><div class="kpi-num"><SAnimatedNumber :value="statusBuckets.violation" /></div><div class="kpi-label">违约记录</div></div>
         </div>
@@ -210,6 +243,7 @@ const { page, pages, pageItems } = usePagination(filtered, filterStatus)
                       >
                         {{ a.label }}
                       </SButton>
+                      <SButton v-if="['pending', 'checked_in', 'temp_leave'].includes(row.status)" size="sm" variant="secondary" @click="ticket = row">凭证</SButton>
                       <span v-if="!actionsOf(row).length" class="cell-dim">—</span>
                     </span>
                   </td>
@@ -223,6 +257,17 @@ const { page, pages, pageItems } = usePagination(filtered, filterStatus)
       </section>
     </div>
     </div>
+    <SDialog :model-value="!!ticket" title="电子报名凭证" width="450px" @update:model-value="ticket = null">
+      <div v-if="ticket" class="ticket-preview" :style="{ '--event-accent': eventPresentation({ name: ticket.room_name }).color }">
+        <div class="ticket-band"><span>{{ eventPresentation({ name: ticket.room_name }).category }}</span><strong>{{ ticket.room_name }}</strong></div>
+        <div class="ticket-qr" role="img" aria-label="二维码视觉示意，不可扫码"><i v-for="(filled, index) in ticketPattern" :key="index" :class="{ filled }" /></div>
+        <p class="ticket-demo-label">二维码界面示意 · 暂不可扫码核销</p>
+        <strong class="ticket-code">报名编号 #{{ ticket.id }}</strong>
+        <dl><div><dt>日期</dt><dd>{{ ticket.res_date }}</dd></div><div><dt>时间</dt><dd>{{ ticket.start_time.slice(0, 5) }}–{{ ticket.end_time.slice(0, 5) }}</dd></div><div><dt>座位</dt><dd>{{ ticket.seat_no }}</dd></div></dl>
+        <p v-if="ticket.status === 'pending'" class="ticket-countdown">{{ minutesUntil ? `距活动开始约 ${minutesUntil} 分钟` : '活动已开始，请查看签到状态' }}</p>
+        <button class="ticket-calendar" @click="addToCalendar(ticket)"><AppIcon name="booking" :size="17" />加入日历</button>
+      </div>
+    </SDialog>
   </div>
 </template>
 

@@ -7,7 +7,7 @@
 
 :root {
   /* ---------- 画布与表面 ---------- */
-  --canvas: #f4f6f9;
+  --canvas: #f6f8fb;
   --canvas-deep: #eceff5;
   --surface: #ffffff;
   --surface-2: #f8fafc;
@@ -27,31 +27,31 @@
   --text-inverse: #ffffff;
 
   /* ---------- 主色 · 低饱和蓝 ---------- */
-  --primary: #3b66da;
-  --primary-hover: #4d78e8;
-  --primary-active: #2f54c4;
-  --primary-weak: #e8eefc;
-  --primary-faint: #f2f6fe;
-  --primary-ring: rgba(59, 102, 218, .24);
+  --primary: #2563eb;
+  --primary-hover: #3b74ee;
+  --primary-active: #1d4ed8;
+  --primary-weak: #dbeafe;
+  --primary-faint: #eff6ff;
+  --primary-ring: rgba(37, 99, 235, .24);
 
   /* ---------- 功能色 ---------- */
-  --green: #1f9160;
-  --green-strong: #157a4f;
+  --green: #22c55e;
+  --green-strong: #15803d;
   --green-weak: #e3f4ec;
   --green-faint: #f1faf5;
 
-  --amber: #c58018;
-  --amber-strong: #9c6610;
+  --amber: #f59e0b;
+  --amber-strong: #a16207;
   --amber-weak: #fbf0da;
   --amber-faint: #fdf9f0;
 
-  --red: #cf4e46;
-  --red-strong: #b03a34;
+  --red: #ef4444;
+  --red-strong: #b91c1c;
   --red-weak: #fbecea;
   --red-faint: #fdf6f5;
 
-  --violet: #7e6cbb;
-  --violet-strong: #63539f;
+  --violet: #8b5cf6;
+  --violet-strong: #6d28d9;
   --violet-weak: #efecf8;
   --violet-faint: #f6f4fb;
 
@@ -68,7 +68,7 @@
   --r-sm: 6px;
   --r-md: 8px;
   --r-lg: 10px;
-  --r-xl: 18px;
+  --r-xl: 14px;
   --r-2xl: 22px;
   --r-full: 999px;
 
@@ -102,11 +102,11 @@
   --scrollbar-thumb-hover: #a9b4c7;
 
   /* ---------- 座位图状态色 ---------- */
-  --seat-free-bg: #e3f3ea;
-  --seat-free-border: #cdebd9;
-  --seat-free-color: var(--green-strong);
-  --seat-free-hover-bg: #d4eedf;
-  --seat-free-hover-border: #a9dfc0;
+  --seat-free-bg: #e8f0ff;
+  --seat-free-border: #bed3fd;
+  --seat-free-color: var(--primary-active);
+  --seat-free-hover-bg: #dbeafe;
+  --seat-free-hover-border: #8eb4fa;
 
   --seat-occupied-bg: #f8f0f0;
   --seat-occupied-border: #eddcdc;

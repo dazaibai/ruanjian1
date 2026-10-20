@@ -20,6 +20,10 @@ defineProps({
       <path d="M4.2 10.2 12 3.7l7.8 6.5v9.3a1.5 1.5 0 0 1-1.5 1.5H5.7a1.5 1.5 0 0 1-1.5-1.5v-9.3Z" stroke="currentColor" stroke-width="1.7" />
       <path d="M9.3 20.9v-6h5.4v6" stroke="currentColor" stroke-width="1.7" />
     </g>
+    <g v-else-if="name === 'search'">
+      <circle cx="10.8" cy="10.8" r="6.6" stroke="currentColor" stroke-width="1.8" />
+      <path d="m15.8 15.8 4.7 4.7" stroke="currentColor" stroke-width="1.8" />
+    </g>
     <g v-else-if="name === 'booking'">
       <rect x="3.2" y="4.5" width="17.6" height="15.5" rx="2.4" stroke="currentColor" stroke-width="1.7" />
       <path d="M7.9 2.4v4.2M16.1 2.4v4.2M3.3 9.7h17.4" stroke="currentColor" stroke-width="1.7" />

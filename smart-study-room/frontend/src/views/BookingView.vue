@@ -1,6 +1,7 @@
 <script setup>
 import SAnimatedNumber from '../components/ui/SAnimatedNumber.vue'
 import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import SeatExplorer from '../components/seat3d/SeatExplorer.vue'
 import SeatPlanDesk from '../components/SeatPlanDesk.vue'
 import { seatType, zoneName, getWindowSides } from '../components/seat3d/seatPresentation'
@@ -18,6 +19,9 @@ import STag from '../components/ui/STag.vue'
 
 // ---- 条件区状态 ----
 const rooms = ref([])
+const route = useRoute()
+const router = useRouter()
+const successReservation = ref(null)
 const roomId = ref(null)
 const date = ref(new Date().toISOString().slice(0, 10))
 const start = ref('09:00')
@@ -52,7 +56,14 @@ async function loadRooms() {
   const resp = await getRooms()
   rooms.value = resp.data || []
   if (rooms.value.length && !roomId.value) {
-    roomId.value = rooms.value[0].id
+    const requested = rooms.value.find((item) => String(item.id) === String(route.query.room))
+    roomId.value = requested?.id || rooms.value[0].id
+    if (requested) {
+      start.value = requested.open_time.slice(0, 5)
+      const [hour, minute] = start.value.split(':').map(Number)
+      const twoHoursLater = `${String(Math.min(23, hour + 2)).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+      end.value = twoHoursLater < requested.close_time.slice(0, 5) ? twoHoursLater : requested.close_time.slice(0, 5)
+    }
     loadSeatMap()
   }
 }
@@ -129,7 +140,8 @@ function seatClass(s) {
 }
 
 function seatTip(s) {
-  return `${s.seat_no} · ${seatType(s)} · ${zoneName[s.zone] || s.zone}${s.near_window ? ' · 靠窗' : ''}${s.status !== 'available' ? ' · ' + (s.status === 'maintenance' ? '维护中' : '停用') : ''}`
+  const state = s.status !== 'available' ? (s.status === 'maintenance' ? '维护中' : '停用') : s.occupied ? '已报名' : '可报名'
+  return `${s.seat_no} · ${seatType(s)} · ${zoneName[s.zone] || s.zone}${s.near_window ? ' · 靠窗' : ''} · ${state}`
 }
 
 // 座位悬浮提示（共享单例，fixed 定位避免被滚动容器裁剪）
@@ -157,7 +169,7 @@ function onSeatClick(s) {
     return
   }
   if (s.occupied) {
-    message.info('该座位在所选活动场次已有报名')
+    message.info('该座位已被选走，请选择其他座位')
     return
   }
   selected.value = s
@@ -179,6 +191,7 @@ async function confirmBooking() {
     try {
       const resp = await createReservation(payload)
       message.success(`报名成功：${resp.data.room_name} ${resp.data.seat_no}`)
+      successReservation.value = resp.data
     } catch {
       await loadSeatMap(true)
       return
@@ -220,6 +233,7 @@ async function runAllocate(autoBook = false) {
     if (autoBook) {
       const r = resp.data.reservation
       message.success(`已为您分配：${r.room_name} ${r.seat_no}，请按时签到`)
+      successReservation.value = r
       allocVisible.value = false
       loadSeatMap()
     } else {
@@ -248,6 +262,7 @@ async function pickRecommended(rec) {
     seat_id: rec.seat.id, date: date.value, start_time: start.value, end_time: end.value
   })
   message.success(`报名成功：${resp.data.room_name} ${resp.data.seat_no}`)
+  successReservation.value = resp.data
   allocVisible.value = false
   loadSeatMap()
 }
@@ -435,6 +450,16 @@ onMounted(loadRooms)
   </div>
 
   <SeatExplorer v-if="show3D" ref="explorer" :origin="seatCard" :room="room" :seats="seats" :selected-id="selected?.id" :date="date" :start="start" :end="end" :loading="loading" :submitting="submitting" @select="onSeatClick" @submit="confirmBooking" @closed="show3D = false" />
+
+  <SDialog :model-value="!!successReservation" title="报名成功" width="430px" @update:model-value="successReservation = null">
+    <div v-if="successReservation" class="signup-success">
+      <div class="signup-success-icon"><AppIcon name="circle-success" :size="47" /></div>
+      <h3>已为你保留座位</h3>
+      <p>{{ successReservation.room_name }} · {{ successReservation.seat_no }}</p>
+      <p>请按时到场签到，电子凭证可在“我的报名”中查看。</p>
+      <SButton variant="primary" block @click="successReservation = null; router.push('/mine')">查看我的报名</SButton>
+    </div>
+  </SDialog>
 
   <!-- 座位悬浮提示 -->
   <Teleport to="body">

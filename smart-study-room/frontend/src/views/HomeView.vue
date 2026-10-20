@@ -9,6 +9,7 @@ import { getRooms } from '../api/room'
 import { getOverview } from '../api/stats'
 import { getCreditOverview } from '../api/credit'
 import AppIcon from '../components/AppIcon.vue'
+import StudentHall from './StudentHall.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -123,7 +124,8 @@ const cardToneClass = {
 </script>
 
 <template>
-  <div v-reveal class="page-view">
+  <StudentHall v-if="auth.isStudent" />
+  <div v-else v-reveal class="page-view">
     <header class="view-heading" data-page-title>
       <h1>{{ greeting }}，{{ who }}</h1>
       <p class="heading-sub">{{ todayText }} · {{ helloText }}</p>

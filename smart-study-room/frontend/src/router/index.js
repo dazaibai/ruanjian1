@@ -26,6 +26,18 @@ const routes = [
         meta: { title: '活动报名', requiresAuth: true, allowedRoles: ['student'] }
       },
       {
+        path: '/events/:id',
+        name: 'event-detail',
+        component: () => import('../views/EventDetailView.vue'),
+        meta: { title: '活动详情', requiresAuth: true, allowedRoles: ['student'] }
+      },
+      {
+        path: '/checkin-demo',
+        name: 'checkin-demo',
+        component: () => import('../views/admin/CheckinDemoView.vue'),
+        meta: { title: '核销演示', requiresAuth: true, allowedRoles: ['admin'] }
+      },
+      {
         path: '/mine',
         name: 'mine',
         component: () => import('../views/MyReservationsView.vue'),
